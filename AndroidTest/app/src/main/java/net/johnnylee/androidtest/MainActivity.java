@@ -1,6 +1,8 @@
 package net.johnnylee.androidtest;
 
 import android.app.*;
+import android.content.*;
+import android.location.*;
 import android.os.*;
 import android.util.*;
 import android.view.*;
@@ -13,20 +15,60 @@ import org.apache.http.client.methods.*;
 import org.apache.http.impl.client.*;
 import org.apache.http.message.*;
 
-
-public class MainActivity extends Activity 
+public class MainActivity extends Activity implements LocationListener
 {
+	private double lat;
+	private double lng;
+	private int count;
+	
+	@Override
+	public void onLocationChanged(Location location)
+	{
+		// TODO: Implement this method
+		
+		lat = location.getLatitude();
+		lng = location.getLongitude();
+
+		voltage = 12 + rand.nextFloat();
+		amphours = 300 + rand.nextFloat();
+		
+		String msg = "Location update: " + 
+		String.valueOf(lat) + ", " + 
+		String.valueOf(lng) + " - " + String.valueOf(count);
+		count++;
+		label.setText(msg);
+		new SubmitToGoogleSheets().execute("");
+	}
+
+	@Override
+	public void onStatusChanged(String p1, int p2, Bundle p3)
+	{
+		// TODO: Implement this method
+	}
+
+	@Override
+	public void onProviderEnabled(String p1)
+	{
+		// TODO: Implement this method
+	}
+
+	@Override
+	public void onProviderDisabled(String p1)
+	{
+		// TODO: Implement this method
+	}
+
 
 	static Random rand = new Random();
 	static float voltage;
 	static float amphours;
 
-	private class SubmitTask extends AsyncTask<String, Integer, Long>
+	private class SubmitToGoogleSheets extends AsyncTask<String, Integer, Long>
 	{
 		protected Long doInBackground(String... urls)
 		{
 			long totalSize = 0;
-			submitVote("test");
+			submitData("test");
 			return totalSize;
 		}
 
@@ -39,7 +81,7 @@ public class MainActivity extends Activity
 		}
 
 
-		private void submitVote(String outcome)
+		private void submitData(String outcome)
 		{
 			HttpClient client = new DefaultHttpClient();
 			//HttpPost post = new HttpPost("https://spreadsheets.google.com/spreadsheet/formResponse?hl=en_US&formkey=1FAIpQLSfEAIYjoQ88Jaqu6mmIMMfgDv6viLUbmkAxsXFZ2yJXCHC-VA");
@@ -47,8 +89,11 @@ public class MainActivity extends Activity
 
 
 			List<BasicNameValuePair> results = new ArrayList<BasicNameValuePair>();
-			results.add(new BasicNameValuePair("entry.563220952", Float.toString(voltage)));
-			results.add(new BasicNameValuePair("entry.488905207", Float.toString(amphours)));
+			
+			results.add(new BasicNameValuePair("entry.404330614", String.valueOf(lat)));
+			results.add(new BasicNameValuePair("entry.607702298", String.valueOf(lng)));
+			results.add(new BasicNameValuePair("entry.563220952", String.valueOf(voltage)));
+			results.add(new BasicNameValuePair("entry.488905207", String.valueOf(amphours)));
 			Log.e("YOUR_TAG", "Preparing POST");
 			try
 			{
@@ -78,25 +123,41 @@ public class MainActivity extends Activity
 		}
 	}
 
-
+	private TextView label;
+	private LocationManager locationManager;
+	private String provider;
+	
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-
+		label = (TextView) findViewById(R.id.mainTextView1);
+		locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+		
+		count = 0;
+		// default
+		Criteria criteria = new Criteria();
+		provider = locationManager.getBestProvider(criteria, false);
+		
+		// Register the listener with the Location Manager to receive location updates
+		locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 60000, 50, this);
+		
 		final Button button = (Button) findViewById(R.id.mainButton1);
 		button.setOnClickListener(new View.OnClickListener() {
 				public void onClick(View v)
 				{
 					// Perform action on click
-
+					
 					voltage = 12 + rand.nextFloat();
 					amphours = 300 + rand.nextFloat();
-
-					new SubmitTask().execute("");
-					String msg = "Values : " + Float.toString(voltage) + ", " + Float.toString(amphours);
-					Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+	
+					//new SubmitToGoogleSheets().execute("");
+					String msg = "Values : " + String.valueOf(voltage) + ", " + String.valueOf(amphours);
+					//Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+					 msg += "\nLocation: " + String.valueOf(lat) + ", " + String.valueOf(lng);
+	
+					label.setText(msg);
 				}
 
 			});
